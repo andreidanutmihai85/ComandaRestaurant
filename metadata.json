@@ -1,0 +1,5 @@
+{
+  "name": "Numpad Speaker",
+  "description": "An application that features a numpad. After a user presses numbers and then the enter key, the app will speak that number using Gemini Text-to-Speech API.",
+  "requestFramePermissions": []
+}

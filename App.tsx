@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { speakNumber } from './services/geminiService';
 import { decode, decodeAudioData } from './utils/audioUtils';
@@ -9,23 +8,23 @@ const App: React.FC = () => {
   const [displayValue, setDisplayValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isKeySelected, setIsKeySelected] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState('');
 
   useEffect(() => {
-    const checkApiKey = async () => {
-      if ((window as any).aistudio) {
-        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-        setIsKeySelected(hasKey);
-      }
-    };
-    checkApiKey();
+    const storedKey = localStorage.getItem('gemini_api_key');
+    if (storedKey) {
+      setApiKey(storedKey);
+    }
   }, []);
 
-  const handleSelectKey = async () => {
-    if ((window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
-      // Assume success and update UI to avoid race conditions.
-      setIsKeySelected(true);
+  const handleSaveApiKey = () => {
+    if (apiKeyInput.trim()) {
+      localStorage.setItem('gemini_api_key', apiKeyInput.trim());
+      setApiKey(apiKeyInput.trim());
+      setError(null);
+    } else {
+      setError("Please enter a valid API key.");
     }
   };
 
@@ -46,12 +45,12 @@ const App: React.FC = () => {
   };
 
   const handleEnterClick = async () => {
-    if (!displayValue || isLoading) return;
+    if (!displayValue || isLoading || !apiKey) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const base64Audio = await speakNumber(displayValue);
+      const base64Audio = await speakNumber(displayValue, apiKey);
       if (base64Audio) {
         const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         const audioBuffer = await decodeAudioData(
@@ -70,9 +69,10 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Error speaking number:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-      if (errorMessage.includes("Requested entity was not found")) {
-        setError("API Key error. Please select a valid key.");
-        setIsKeySelected(false); // Re-prompt for key selection
+      if (errorMessage.toLowerCase().includes("api key not valid")) {
+        setError("API Key is invalid. Please enter a new one.");
+        localStorage.removeItem('gemini_api_key');
+        setApiKey(null);
       } else {
         setError(errorMessage);
       }
@@ -83,27 +83,34 @@ const App: React.FC = () => {
 
   const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-  if (!isKeySelected) {
+  if (!apiKey) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
         <div className="w-full max-w-sm mx-auto text-center bg-gray-800 rounded-3xl shadow-2xl p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">API Key Required</h1>
+            <h1 className="text-2xl font-bold text-white">Enter API Key</h1>
             <p className="text-gray-400 mt-2">
-              Please select an API key to use the Numpad Speaker.
+              Please enter your Gemini API key to use the Numpad Speaker.
             </p>
           </div>
+           <input
+            type="password"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder="Enter your API Key here"
+            className="w-full bg-gray-900/50 text-white px-4 py-3 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
           {error && <p className="text-sm text-red-400">{error}</p>}
           <button
-            onClick={handleSelectKey}
+            onClick={handleSaveApiKey}
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
           >
-            Select API Key
+            Save and Continue
           </button>
            <p className="text-xs text-gray-500">
-            For more information on billing, visit{' '}
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-400">
-              ai.google.dev/gemini-api/docs/billing
+            You can get an API key from{' '}
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-400">
+              Google AI Studio
             </a>.
           </p>
         </div>

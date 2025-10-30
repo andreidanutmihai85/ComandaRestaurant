@@ -1,10 +1,9 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
-export async function speakNumber(numberString: string): Promise<string | null> {
-  // API key is automatically sourced from process.env.API_KEY
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function speakNumber(numberString: string, apiKey: string): Promise<string | null> {
+  const ai = new GoogleGenAI({ apiKey });
 
-  const textToSpeak = `Comanda ${numberString} este gata!`;
+  const textToSpeak = `Comanda numarul ${numberString}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -31,6 +30,9 @@ export async function speakNumber(numberString: string): Promise<string | null> 
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
+    if (error instanceof Error && error.message.includes('API key not valid')) {
+       throw new Error("API key not valid. Please pass a valid API key.");
+    }
     throw new Error("Failed to generate audio from Gemini API.");
   }
 }

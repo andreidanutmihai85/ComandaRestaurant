@@ -15,6 +15,11 @@ const App: React.FC = () => {
     const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
+    } else {
+      // Automatically set and save the provided API key
+      const defaultApiKey = 'AIzaSyB921gzoMHd4D7LyCXKew74XlHQENjwc2o';
+      localStorage.setItem('gemini_api_key', defaultApiKey);
+      setApiKey(defaultApiKey);
     }
   }, []);
 

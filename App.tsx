@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { speakNumber } from './services/geminiService';
 import { decode, decodeAudioData } from './utils/audioUtils';
 import NumpadButton from './components/NumpadButton';
@@ -9,15 +9,36 @@ const App: React.FC = () => {
   const [displayValue, setDisplayValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isKeySelected, setIsKeySelected] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if ((window as any).aistudio) {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        setIsKeySelected(hasKey);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      // Assume success and update UI to avoid race conditions.
+      setIsKeySelected(true);
+    }
+  };
 
   const handleNumberClick = (num: string) => {
     if (displayValue.length < 20) {
       setDisplayValue(prev => prev + num);
+      setError(null);
     }
   };
 
   const handleClearClick = () => {
     setDisplayValue('');
+    setError(null);
   };
   
   const handleBackspaceClick = () => {
@@ -48,7 +69,13 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Error speaking number:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+      if (errorMessage.includes("Requested entity was not found")) {
+        setError("API Key error. Please select a valid key.");
+        setIsKeySelected(false); // Re-prompt for key selection
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -56,13 +83,41 @@ const App: React.FC = () => {
 
   const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
+  if (!isKeySelected) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+        <div className="w-full max-w-sm mx-auto text-center bg-gray-800 rounded-3xl shadow-2xl p-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">API Key Required</h1>
+            <p className="text-gray-400 mt-2">
+              Please select an API key to use the Numpad Speaker.
+            </p>
+          </div>
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <button
+            onClick={handleSelectKey}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+          >
+            Select API Key
+          </button>
+           <p className="text-xs text-gray-500">
+            For more information on billing, visit{' '}
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-400">
+              ai.google.dev/gemini-api/docs/billing
+            </a>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       <div className="w-full max-w-xs mx-auto">
         <div className="bg-gray-800 rounded-3xl shadow-2xl p-6 space-y-6">
           <div className="bg-gray-900/50 rounded-xl px-4 py-3 text-right h-20 flex flex-col justify-center">
             <span className="text-4xl font-light tracking-wider truncate">{displayValue || '0'}</span>
-            {error && <span className="text-xs text-red-400 mt-1">{error}</span>}
+            {error && <span className="text-xs text-red-400 mt-1 truncate">{error}</span>}
           </div>
           
           <div className="grid grid-cols-3 gap-4">

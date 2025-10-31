@@ -3,7 +3,7 @@ import { GoogleGenAI, Modality } from "@google/genai";
 export async function speakNumber(numberString: string, apiKey: string): Promise<string | null> {
   const ai = new GoogleGenAI({ apiKey });
 
-  const textToSpeak = `Comanda numarul ${numberString}`;
+  const textToSpeak = `Comanda numarul ${numberString} este gata!`;
 
   try {
     const response = await ai.models.generateContent({
